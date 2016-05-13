@@ -5,7 +5,7 @@ import (
 	"sync"
 	"time"
 
-	"github.com/concourse/retryhttp/roundtripper"
+	"github.com/concourse/retryhttp"
 )
 
 type FakeSleeper struct {
@@ -39,4 +39,4 @@ func (fake *FakeSleeper) SleepArgsForCall(i int) time.Duration {
 	return fake.sleepArgsForCall[i].arg1
 }
 
-var _ roundtripper.Sleeper = new(FakeSleeper)
+var _ retryhttp.Sleeper = new(FakeSleeper)

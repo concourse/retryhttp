@@ -1,4 +1,4 @@
-package roundtripper_test
+package retryhttp_test
 
 import (
 	"errors"
@@ -7,8 +7,8 @@ import (
 	"syscall"
 	"time"
 
-	"github.com/concourse/retryhttp/roundtripper"
-	"github.com/concourse/retryhttp/roundtripper/fakes"
+	"github.com/concourse/retryhttp"
+	"github.com/concourse/retryhttp/fakes"
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
 	"github.com/onsi/gomega/gbytes"
@@ -21,7 +21,7 @@ var _ = Describe("RetryRoundTripper", func() {
 		fakeRetryPolicy   *fakes.FakeRetryPolicy
 		fakeSleeper       *fakes.FakeSleeper
 		testLogger        lager.Logger
-		retryRoundTripper *roundtripper.RetryRoundTripper
+		retryRoundTripper *retryhttp.RetryRoundTripper
 		response          *http.Response
 		roundTripErr      error
 		request           *http.Request
@@ -33,7 +33,7 @@ var _ = Describe("RetryRoundTripper", func() {
 		fakeSleeper = new(fakes.FakeSleeper)
 		testLogger = lager.NewLogger("test")
 
-		retryRoundTripper = &roundtripper.RetryRoundTripper{
+		retryRoundTripper = &retryhttp.RetryRoundTripper{
 			Logger:       testLogger,
 			Sleeper:      fakeSleeper,
 			RetryPolicy:  fakeRetryPolicy,
@@ -153,7 +153,7 @@ var _ = Describe("RetryRoundTripper", func() {
 		It("sends the request", func() {
 			Expect(fakeRoundTripper.RoundTripCallCount()).To(Equal(1))
 			Expect(fakeRoundTripper.RoundTripArgsForCall(0)).To(Equal(
-				&http.Request{URL: &url.URL{Path: "some-path"}, Body: &roundtripper.RetryReadCloser{}},
+				&http.Request{URL: &url.URL{Path: "some-path"}, Body: &retryhttp.RetryReadCloser{}},
 			))
 		})
 

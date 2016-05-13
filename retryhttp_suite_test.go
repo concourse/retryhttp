@@ -1,4 +1,4 @@
-package roundtripper_test
+package retryhttp_test
 
 import (
 	. "github.com/onsi/ginkgo"
@@ -7,7 +7,7 @@ import (
 	"testing"
 )
 
-func TestRoundtripper(t *testing.T) {
+func TestRetryhttp(t *testing.T) {
 	RegisterFailHandler(Fail)
-	RunSpecs(t, "Roundtripper Suite")
+	RunSpecs(t, "Retryhttp Suite")
 }

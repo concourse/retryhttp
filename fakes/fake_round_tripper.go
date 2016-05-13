@@ -5,7 +5,7 @@ import (
 	"net/http"
 	"sync"
 
-	"github.com/concourse/retryhttp/roundtripper"
+	"github.com/concourse/retryhttp"
 )
 
 type FakeRoundTripper struct {
@@ -53,4 +53,4 @@ func (fake *FakeRoundTripper) RoundTripReturns(result1 *http.Response, result2 e
 	}{result1, result2}
 }
 
-var _ roundtripper.RoundTripper = new(FakeRoundTripper)
+var _ retryhttp.RoundTripper = new(FakeRoundTripper)

@@ -5,7 +5,7 @@ import (
 	"sync"
 	"time"
 
-	"github.com/concourse/retryhttp/roundtripper"
+	"github.com/concourse/retryhttp"
 )
 
 type FakeRetryPolicy struct {
@@ -53,4 +53,4 @@ func (fake *FakeRetryPolicy) DelayForReturns(result1 time.Duration, result2 bool
 	}{result1, result2}
 }
 
-var _ roundtripper.RetryPolicy = new(FakeRetryPolicy)
+var _ retryhttp.RetryPolicy = new(FakeRetryPolicy)

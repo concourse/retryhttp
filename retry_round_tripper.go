@@ -1,4 +1,4 @@
-package roundtripper
+package retryhttp
 
 import (
 	"errors"
