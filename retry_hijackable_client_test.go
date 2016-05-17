@@ -11,33 +11,33 @@ import (
 	"github.com/concourse/retryhttp/fakes"
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
-	"github.com/onsi/gomega/gbytes"
 	"github.com/pivotal-golang/lager"
 )
 
-var _ = Describe("RetryRoundTripper", func() {
+var _ = Describe("RetryHijackableClient", func() {
 	var (
-		fakeRoundTripper  *fakes.FakeRoundTripper
-		fakeRetryPolicy   *fakes.FakeRetryPolicy
-		fakeSleeper       *fakes.FakeSleeper
-		testLogger        lager.Logger
-		retryRoundTripper *retryhttp.RetryRoundTripper
-		response          *http.Response
-		roundTripErr      error
-		request           *http.Request
+		fakeHijackableClient  *fakes.FakeHijackableClient
+		fakeRetryPolicy       *fakes.FakeRetryPolicy
+		fakeSleeper           *fakes.FakeSleeper
+		testLogger            lager.Logger
+		retryHijackableClient *retryhttp.RetryHijackableClient
+		response              *http.Response
+		hijackCloser          retryhttp.HijackCloser
+		clientError           error
+		request               *http.Request
 	)
 
 	BeforeEach(func() {
-		fakeRoundTripper = new(fakes.FakeRoundTripper)
+		fakeHijackableClient = new(fakes.FakeHijackableClient)
 		fakeRetryPolicy = new(fakes.FakeRetryPolicy)
 		fakeSleeper = new(fakes.FakeSleeper)
 		testLogger = lager.NewLogger("test")
 
-		retryRoundTripper = &retryhttp.RetryRoundTripper{
-			Logger:       testLogger,
-			Sleeper:      fakeSleeper,
-			RetryPolicy:  fakeRetryPolicy,
-			RoundTripper: fakeRoundTripper,
+		retryHijackableClient = &retryhttp.RetryHijackableClient{
+			Logger:           testLogger,
+			Sleeper:          fakeSleeper,
+			RetryPolicy:      fakeRetryPolicy,
+			HijackableClient: fakeHijackableClient,
 		}
 		request = &http.Request{URL: &url.URL{Path: "some-path"}}
 	})
@@ -52,13 +52,13 @@ var _ = Describe("RetryRoundTripper", func() {
 	}
 
 	JustBeforeEach(func() {
-		response, roundTripErr = retryRoundTripper.RoundTrip(request)
+		response, hijackCloser, clientError = retryHijackableClient.Do(request)
 	})
 
 	for _, retryableError := range retryableErrors {
 		Context("when the error is "+retryableError.Error(), func() {
 			BeforeEach(func() {
-				fakeRoundTripper.RoundTripReturns(nil, retryableError)
+				fakeHijackableClient.DoReturns(nil, nil, retryableError)
 			})
 
 			Context("as long as the backoff policy returns true", func() {
@@ -70,7 +70,7 @@ var _ = Describe("RetryRoundTripper", func() {
 					close(durations)
 
 					fakeRetryPolicy.DelayForStub = func(failedAttempts uint) (time.Duration, bool) {
-						Expect(fakeRoundTripper.RoundTripCallCount()).To(Equal(int(failedAttempts)))
+						Expect(fakeHijackableClient.DoCallCount()).To(Equal(int(failedAttempts)))
 
 						select {
 						case d, ok := <-durations:
@@ -92,26 +92,7 @@ var _ = Describe("RetryRoundTripper", func() {
 					Expect(fakeRetryPolicy.DelayForArgsForCall(2)).To(Equal(uint(3)))
 					Expect(fakeSleeper.SleepArgsForCall(2)).To(Equal(1000 * time.Second))
 
-					Expect(roundTripErr).To(Equal(retryableError))
-				})
-
-				Context("when request body was already read from (streaming request)", func() {
-					BeforeEach(func() {
-						fakeRoundTripper.RoundTripStub = func(request *http.Request) (*http.Response, error) {
-							request.Body.Read(make([]byte, 1))
-							return &http.Response{StatusCode: http.StatusTeapot}, retryableError
-						}
-						requestBody := gbytes.NewBuffer()
-						requestBody.Write([]byte("hello world"))
-						request.Body = requestBody
-						buf := make([]byte, 1)
-						request.Body.Read(buf)
-					})
-
-					It("does not retry", func() {
-						Expect(fakeRoundTripper.RoundTripCallCount()).To(Equal(1))
-						Expect(roundTripErr).To(Equal(retryableError))
-					})
+					Expect(clientError).To(Equal(retryableError))
 				})
 			})
 		})
@@ -124,30 +105,34 @@ var _ = Describe("RetryRoundTripper", func() {
 			fakeRetryPolicy.DelayForReturns(0, true)
 
 			disaster = errors.New("oh no!")
-			fakeRoundTripper.RoundTripReturns(nil, disaster)
+			fakeHijackableClient.DoReturns(nil, nil, disaster)
 		})
 
 		It("propagates the error", func() {
-			Expect(roundTripErr).To(Equal(disaster))
+			Expect(clientError).To(Equal(disaster))
 		})
 
 		It("does not retry", func() {
-			Expect(fakeRoundTripper.RoundTripCallCount()).To(Equal(1))
+			Expect(fakeHijackableClient.DoCallCount()).To(Equal(1))
 		})
 	})
 
 	Context("when there is no error", func() {
+		var fakeHijackCloser *fakes.FakeHijackCloser
+
 		BeforeEach(func() {
-			fakeRoundTripper.RoundTripReturns(
+			fakeHijackCloser = new(fakes.FakeHijackCloser)
+			fakeHijackableClient.DoReturns(
 				&http.Response{StatusCode: http.StatusTeapot},
+				fakeHijackCloser,
 				nil,
 			)
 		})
 
 		It("sends the request", func() {
-			Expect(fakeRoundTripper.RoundTripCallCount()).To(Equal(1))
-			Expect(fakeRoundTripper.RoundTripArgsForCall(0)).To(Equal(
-				&http.Request{URL: &url.URL{Path: "some-path"}, Body: &retryhttp.RetryReadCloser{}},
+			Expect(fakeHijackableClient.DoCallCount()).To(Equal(1))
+			Expect(fakeHijackableClient.DoArgsForCall(0)).To(Equal(
+				&http.Request{URL: &url.URL{Path: "some-path"}},
 			))
 		})
 
@@ -155,8 +140,12 @@ var _ = Describe("RetryRoundTripper", func() {
 			Expect(response).To(Equal(&http.Response{StatusCode: http.StatusTeapot}))
 		})
 
+		It("returns the hijackCloser", func() {
+			Expect(hijackCloser).To(Equal(fakeHijackCloser))
+		})
+
 		It("does not error", func() {
-			Expect(roundTripErr).NotTo(HaveOccurred())
+			Expect(clientError).NotTo(HaveOccurred())
 		})
 	})
 })
