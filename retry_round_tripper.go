@@ -39,7 +39,10 @@ func (rrc *RetryReadCloser) Read(p []byte) (n int, err error) {
 
 func (d *RetryRoundTripper) RoundTrip(request *http.Request) (*http.Response, error) {
 	retryReadCloser := &RetryReadCloser{request.Body, false}
-	request.Body = retryReadCloser
+
+	if request.Body != nil {
+		request.Body = retryReadCloser
+	}
 
 	var response *http.Response
 	var err error

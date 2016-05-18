@@ -147,7 +147,7 @@ var _ = Describe("RetryRoundTripper", func() {
 		It("sends the request", func() {
 			Expect(fakeRoundTripper.RoundTripCallCount()).To(Equal(1))
 			Expect(fakeRoundTripper.RoundTripArgsForCall(0)).To(Equal(
-				&http.Request{URL: &url.URL{Path: "some-path"}, Body: &retryhttp.RetryReadCloser{}},
+				&http.Request{URL: &url.URL{Path: "some-path"}, Body: nil},
 			))
 		})
 
