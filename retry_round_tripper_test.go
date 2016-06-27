@@ -8,7 +8,7 @@ import (
 	"time"
 
 	"github.com/concourse/retryhttp"
-	"github.com/concourse/retryhttp/fakes"
+	"github.com/concourse/retryhttp/retryhttpfakes"
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
 	"github.com/onsi/gomega/gbytes"
@@ -17,9 +17,9 @@ import (
 
 var _ = Describe("RetryRoundTripper", func() {
 	var (
-		fakeRoundTripper  *fakes.FakeRoundTripper
-		fakeRetryPolicy   *fakes.FakeRetryPolicy
-		fakeSleeper       *fakes.FakeSleeper
+		fakeRoundTripper  *retryhttpfakes.FakeRoundTripper
+		fakeRetryPolicy   *retryhttpfakes.FakeRetryPolicy
+		fakeSleeper       *retryhttpfakes.FakeSleeper
 		testLogger        lager.Logger
 		retryRoundTripper *retryhttp.RetryRoundTripper
 		response          *http.Response
@@ -28,9 +28,9 @@ var _ = Describe("RetryRoundTripper", func() {
 	)
 
 	BeforeEach(func() {
-		fakeRoundTripper = new(fakes.FakeRoundTripper)
-		fakeRetryPolicy = new(fakes.FakeRetryPolicy)
-		fakeSleeper = new(fakes.FakeSleeper)
+		fakeRoundTripper = new(retryhttpfakes.FakeRoundTripper)
+		fakeRetryPolicy = new(retryhttpfakes.FakeRetryPolicy)
+		fakeSleeper = new(retryhttpfakes.FakeSleeper)
 		testLogger = lager.NewLogger("test")
 
 		retryRoundTripper = &retryhttp.RetryRoundTripper{

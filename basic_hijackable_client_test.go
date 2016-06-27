@@ -6,19 +6,19 @@ import (
 	"net/http"
 
 	"github.com/concourse/retryhttp"
-	"github.com/concourse/retryhttp/fakes"
+	"github.com/concourse/retryhttp/retryhttpfakes"
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
 )
 
 var _ = Describe("BasicHijackableClient", func() {
 	var (
-		fakeDoHijackCloserFactory *fakes.FakeDoHijackCloserFactory
+		fakeDoHijackCloserFactory *retryhttpfakes.FakeDoHijackCloserFactory
 		hijackableClient          *retryhttp.BasicHijackableClient
 	)
 
 	BeforeEach(func() {
-		fakeDoHijackCloserFactory = new(fakes.FakeDoHijackCloserFactory)
+		fakeDoHijackCloserFactory = new(retryhttpfakes.FakeDoHijackCloserFactory)
 		hijackableClient = nil
 	})
 
@@ -74,15 +74,15 @@ var _ = Describe("BasicHijackableClient", func() {
 
 	Context("when dialing succeeds", func() {
 		var (
-			fakeDoHijackCloser *fakes.FakeDoHijackCloser
-			fakeConn           *fakes.FakeConn
+			fakeDoHijackCloser *retryhttpfakes.FakeDoHijackCloser
+			fakeConn           *retryhttpfakes.FakeConn
 			request            *http.Request
 		)
 
 		BeforeEach(func() {
-			fakeDoHijackCloser = new(fakes.FakeDoHijackCloser)
+			fakeDoHijackCloser = new(retryhttpfakes.FakeDoHijackCloser)
 			fakeDoHijackCloserFactory.NewDoHijackCloserReturns(fakeDoHijackCloser)
-			fakeConn = new(fakes.FakeConn)
+			fakeConn = new(retryhttpfakes.FakeConn)
 			hijackableClient = &retryhttp.BasicHijackableClient{
 				Dial: func(string, string) (net.Conn, error) {
 					return fakeConn, nil

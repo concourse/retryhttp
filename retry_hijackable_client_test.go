@@ -8,7 +8,7 @@ import (
 	"time"
 
 	"github.com/concourse/retryhttp"
-	"github.com/concourse/retryhttp/fakes"
+	"github.com/concourse/retryhttp/retryhttpfakes"
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
 	"github.com/pivotal-golang/lager"
@@ -16,9 +16,9 @@ import (
 
 var _ = Describe("RetryHijackableClient", func() {
 	var (
-		fakeHijackableClient  *fakes.FakeHijackableClient
-		fakeRetryPolicy       *fakes.FakeRetryPolicy
-		fakeSleeper           *fakes.FakeSleeper
+		fakeHijackableClient  *retryhttpfakes.FakeHijackableClient
+		fakeRetryPolicy       *retryhttpfakes.FakeRetryPolicy
+		fakeSleeper           *retryhttpfakes.FakeSleeper
 		testLogger            lager.Logger
 		retryHijackableClient *retryhttp.RetryHijackableClient
 		response              *http.Response
@@ -28,9 +28,9 @@ var _ = Describe("RetryHijackableClient", func() {
 	)
 
 	BeforeEach(func() {
-		fakeHijackableClient = new(fakes.FakeHijackableClient)
-		fakeRetryPolicy = new(fakes.FakeRetryPolicy)
-		fakeSleeper = new(fakes.FakeSleeper)
+		fakeHijackableClient = new(retryhttpfakes.FakeHijackableClient)
+		fakeRetryPolicy = new(retryhttpfakes.FakeRetryPolicy)
+		fakeSleeper = new(retryhttpfakes.FakeSleeper)
 		testLogger = lager.NewLogger("test")
 
 		retryHijackableClient = &retryhttp.RetryHijackableClient{
@@ -118,10 +118,10 @@ var _ = Describe("RetryHijackableClient", func() {
 	})
 
 	Context("when there is no error", func() {
-		var fakeHijackCloser *fakes.FakeHijackCloser
+		var fakeHijackCloser *retryhttpfakes.FakeHijackCloser
 
 		BeforeEach(func() {
-			fakeHijackCloser = new(fakes.FakeHijackCloser)
+			fakeHijackCloser = new(retryhttpfakes.FakeHijackCloser)
 			fakeHijackableClient.DoReturns(
 				&http.Response{StatusCode: http.StatusTeapot},
 				fakeHijackCloser,
