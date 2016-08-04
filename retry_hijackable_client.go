@@ -3,7 +3,7 @@ package retryhttp
 import (
 	"net/http"
 
-	"github.com/pivotal-golang/lager"
+	"code.cloudfoundry.org/lager"
 )
 
 type RetryHijackableClient struct {

@@ -7,7 +7,7 @@ import (
 	"syscall"
 	"time"
 
-	"github.com/pivotal-golang/lager"
+	"code.cloudfoundry.org/lager"
 )
 
 func retry(logger lager.Logger, retryPolicy RetryPolicy, sleeper Sleeper, action func() bool) {

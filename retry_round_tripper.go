@@ -5,7 +5,7 @@ import (
 	"net/http"
 	"time"
 
-	"github.com/pivotal-golang/lager"
+	"code.cloudfoundry.org/lager"
 )
 
 //go:generate counterfeiter . Sleeper
