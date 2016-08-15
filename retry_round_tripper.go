@@ -46,7 +46,7 @@ func (d *RetryRoundTripper) RoundTrip(request *http.Request) (*http.Response, er
 
 	var response *http.Response
 	var err error
-	retry(d.Logger, d.RetryPolicy, d.Sleeper, func() bool {
+	Retry(d.Logger, d.RetryPolicy, d.Sleeper, func() bool {
 		response, err = d.RoundTripper.RoundTrip(request)
 		return err == nil || retryReadCloser.IsRead || !retryable(err)
 	})

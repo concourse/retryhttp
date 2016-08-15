@@ -10,7 +10,7 @@ import (
 	"code.cloudfoundry.org/lager"
 )
 
-func retry(logger lager.Logger, retryPolicy RetryPolicy, sleeper Sleeper, action func() bool) {
+func Retry(logger lager.Logger, retryPolicy RetryPolicy, sleeper Sleeper, action func() bool) {
 	retryLogger := logger.Session("retry")
 	startTime := time.Now()
 
