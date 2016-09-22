@@ -7,18 +7,18 @@ import (
 	"syscall"
 	"time"
 
+	"code.cloudfoundry.org/lager"
+	"github.com/cenk/backoff"
 	"github.com/concourse/retryhttp"
 	"github.com/concourse/retryhttp/retryhttpfakes"
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
-	"code.cloudfoundry.org/lager"
 )
 
 var _ = Describe("RetryHijackableClient", func() {
 	var (
 		fakeHijackableClient  *retryhttpfakes.FakeHijackableClient
-		fakeRetryPolicy       *retryhttpfakes.FakeRetryPolicy
-		fakeSleeper           *retryhttpfakes.FakeSleeper
+		fakeBackOff           *retryhttpfakes.FakeBackOff
 		testLogger            lager.Logger
 		retryHijackableClient *retryhttp.RetryHijackableClient
 		response              *http.Response
@@ -29,14 +29,14 @@ var _ = Describe("RetryHijackableClient", func() {
 
 	BeforeEach(func() {
 		fakeHijackableClient = new(retryhttpfakes.FakeHijackableClient)
-		fakeRetryPolicy = new(retryhttpfakes.FakeRetryPolicy)
-		fakeSleeper = new(retryhttpfakes.FakeSleeper)
+		fakeBackOffFactory := new(retryhttpfakes.FakeBackOffFactory)
+		fakeBackOff = new(retryhttpfakes.FakeBackOff)
+		fakeBackOffFactory.NewBackOffReturns(fakeBackOff)
 		testLogger = lager.NewLogger("test")
 
 		retryHijackableClient = &retryhttp.RetryHijackableClient{
 			Logger:           testLogger,
-			Sleeper:          fakeSleeper,
-			RetryPolicy:      fakeRetryPolicy,
+			BackOffFactory:   fakeBackOffFactory,
 			HijackableClient: fakeHijackableClient,
 		}
 		request = &http.Request{URL: &url.URL{Path: "some-path"}}
@@ -61,38 +61,22 @@ var _ = Describe("RetryHijackableClient", func() {
 				fakeHijackableClient.DoReturns(nil, nil, retryableError)
 			})
 
-			Context("as long as the backoff policy returns true", func() {
+			Context("as long as the backoff policy does not stop", func() {
 				BeforeEach(func() {
-					durations := make(chan time.Duration, 3)
-					durations <- time.Second
-					durations <- 2 * time.Second
-					durations <- 1000 * time.Second
-					close(durations)
-
-					fakeRetryPolicy.DelayForStub = func(failedAttempts uint) (time.Duration, bool) {
-						Expect(fakeHijackableClient.DoCallCount()).To(Equal(int(failedAttempts)))
-
-						select {
-						case d, ok := <-durations:
-							return d, ok
+					backOffAttempts := 0
+					fakeBackOff.NextBackOffStub = func() time.Duration {
+						backOffAttempts++
+						if backOffAttempts >= 10 {
+							return backoff.Stop
 						}
+
+						return 0 * time.Second
 					}
 				})
 
-				It("continuously retries with an increasing attempt count", func() {
-					Expect(fakeRetryPolicy.DelayForCallCount()).To(Equal(4))
-					Expect(fakeSleeper.SleepCallCount()).To(Equal(3))
-
-					Expect(fakeRetryPolicy.DelayForArgsForCall(0)).To(Equal(uint(1)))
-					Expect(fakeSleeper.SleepArgsForCall(0)).To(Equal(time.Second))
-
-					Expect(fakeRetryPolicy.DelayForArgsForCall(1)).To(Equal(uint(2)))
-					Expect(fakeSleeper.SleepArgsForCall(1)).To(Equal(2 * time.Second))
-
-					Expect(fakeRetryPolicy.DelayForArgsForCall(2)).To(Equal(uint(3)))
-					Expect(fakeSleeper.SleepArgsForCall(2)).To(Equal(1000 * time.Second))
-
+				It("continuously retries with an increasing attempt count until backoff policy ends", func() {
 					Expect(clientError).To(Equal(retryableError))
+					Expect(fakeHijackableClient.DoCallCount()).To(Equal(10))
 				})
 			})
 		})
@@ -102,8 +86,6 @@ var _ = Describe("RetryHijackableClient", func() {
 		var disaster error
 
 		BeforeEach(func() {
-			fakeRetryPolicy.DelayForReturns(0, true)
-
 			disaster = errors.New("oh no!")
 			fakeHijackableClient.DoReturns(nil, nil, disaster)
 		})

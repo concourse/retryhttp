@@ -7,19 +7,19 @@ import (
 	"syscall"
 	"time"
 
+	"code.cloudfoundry.org/lager"
+	"github.com/cenk/backoff"
 	"github.com/concourse/retryhttp"
 	"github.com/concourse/retryhttp/retryhttpfakes"
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
 	"github.com/onsi/gomega/gbytes"
-	"code.cloudfoundry.org/lager"
 )
 
 var _ = Describe("RetryRoundTripper", func() {
 	var (
 		fakeRoundTripper  *retryhttpfakes.FakeRoundTripper
-		fakeRetryPolicy   *retryhttpfakes.FakeRetryPolicy
-		fakeSleeper       *retryhttpfakes.FakeSleeper
+		fakeBackOff       *retryhttpfakes.FakeBackOff
 		testLogger        lager.Logger
 		retryRoundTripper *retryhttp.RetryRoundTripper
 		response          *http.Response
@@ -29,15 +29,15 @@ var _ = Describe("RetryRoundTripper", func() {
 
 	BeforeEach(func() {
 		fakeRoundTripper = new(retryhttpfakes.FakeRoundTripper)
-		fakeRetryPolicy = new(retryhttpfakes.FakeRetryPolicy)
-		fakeSleeper = new(retryhttpfakes.FakeSleeper)
+		fakeBackOffFactory := new(retryhttpfakes.FakeBackOffFactory)
+		fakeBackOff = new(retryhttpfakes.FakeBackOff)
+		fakeBackOffFactory.NewBackOffReturns(fakeBackOff)
 		testLogger = lager.NewLogger("test")
 
 		retryRoundTripper = &retryhttp.RetryRoundTripper{
-			Logger:       testLogger,
-			Sleeper:      fakeSleeper,
-			RetryPolicy:  fakeRetryPolicy,
-			RoundTripper: fakeRoundTripper,
+			Logger:         testLogger,
+			BackOffFactory: fakeBackOffFactory,
+			RoundTripper:   fakeRoundTripper,
 		}
 		request = &http.Request{URL: &url.URL{Path: "some-path"}}
 	})
@@ -59,59 +59,38 @@ var _ = Describe("RetryRoundTripper", func() {
 		Context("when the error is "+retryableError.Error(), func() {
 			BeforeEach(func() {
 				fakeRoundTripper.RoundTripReturns(nil, retryableError)
+				backOffAttempts := 0
+				fakeBackOff.NextBackOffStub = func() time.Duration {
+					backOffAttempts++
+					if backOffAttempts >= 10 {
+						return backoff.Stop
+					}
+
+					return 0 * time.Second
+				}
 			})
 
-			Context("as long as the backoff policy returns true", func() {
+			It("continuously retries with an increasing attempt count until backoff policy ends", func() {
+				Expect(roundTripErr).To(Equal(retryableError))
+				Expect(fakeRoundTripper.RoundTripCallCount()).To(Equal(10))
+			})
+
+			Context("when request body was already read from (streaming request)", func() {
 				BeforeEach(func() {
-					durations := make(chan time.Duration, 3)
-					durations <- time.Second
-					durations <- 2 * time.Second
-					durations <- 1000 * time.Second
-					close(durations)
-
-					fakeRetryPolicy.DelayForStub = func(failedAttempts uint) (time.Duration, bool) {
-						Expect(fakeRoundTripper.RoundTripCallCount()).To(Equal(int(failedAttempts)))
-
-						select {
-						case d, ok := <-durations:
-							return d, ok
-						}
+					fakeRoundTripper.RoundTripStub = func(request *http.Request) (*http.Response, error) {
+						request.Body.Read(make([]byte, 1))
+						return &http.Response{StatusCode: http.StatusTeapot}, retryableError
 					}
+					requestBody := gbytes.NewBuffer()
+					requestBody.Write([]byte("hello world"))
+					request.Body = requestBody
+					buf := make([]byte, 1)
+					request.Body.Read(buf)
 				})
 
-				It("continuously retries with an increasing attempt count", func() {
-					Expect(fakeRetryPolicy.DelayForCallCount()).To(Equal(4))
-					Expect(fakeSleeper.SleepCallCount()).To(Equal(3))
-
-					Expect(fakeRetryPolicy.DelayForArgsForCall(0)).To(Equal(uint(1)))
-					Expect(fakeSleeper.SleepArgsForCall(0)).To(Equal(time.Second))
-
-					Expect(fakeRetryPolicy.DelayForArgsForCall(1)).To(Equal(uint(2)))
-					Expect(fakeSleeper.SleepArgsForCall(1)).To(Equal(2 * time.Second))
-
-					Expect(fakeRetryPolicy.DelayForArgsForCall(2)).To(Equal(uint(3)))
-					Expect(fakeSleeper.SleepArgsForCall(2)).To(Equal(1000 * time.Second))
-
+				It("does not retry", func() {
+					Expect(fakeRoundTripper.RoundTripCallCount()).To(Equal(1))
 					Expect(roundTripErr).To(Equal(retryableError))
-				})
-
-				Context("when request body was already read from (streaming request)", func() {
-					BeforeEach(func() {
-						fakeRoundTripper.RoundTripStub = func(request *http.Request) (*http.Response, error) {
-							request.Body.Read(make([]byte, 1))
-							return &http.Response{StatusCode: http.StatusTeapot}, retryableError
-						}
-						requestBody := gbytes.NewBuffer()
-						requestBody.Write([]byte("hello world"))
-						request.Body = requestBody
-						buf := make([]byte, 1)
-						request.Body.Read(buf)
-					})
-
-					It("does not retry", func() {
-						Expect(fakeRoundTripper.RoundTripCallCount()).To(Equal(1))
-						Expect(roundTripErr).To(Equal(retryableError))
-					})
 				})
 			})
 		})
@@ -121,8 +100,6 @@ var _ = Describe("RetryRoundTripper", func() {
 		var disaster error
 
 		BeforeEach(func() {
-			fakeRetryPolicy.DelayForReturns(0, true)
-
 			disaster = errors.New("oh no!")
 			fakeRoundTripper.RoundTripReturns(nil, disaster)
 		})
