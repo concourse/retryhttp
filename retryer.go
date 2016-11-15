@@ -7,7 +7,15 @@ import (
 	"syscall"
 )
 
-func retryable(err error) bool {
+//go:generate counterfeiter . Retryer
+
+type Retryer interface {
+	IsRetryable(err error) bool
+}
+
+type DefaultRetryer struct{}
+
+func (r *DefaultRetryer) IsRetryable(err error) bool {
 	if neterr, ok := err.(net.Error); ok {
 		if neterr.Temporary() {
 			return true
@@ -15,7 +23,7 @@ func retryable(err error) bool {
 	}
 
 	s := err.Error()
-	for _, retryableError := range retryableErrors {
+	for _, retryableError := range defaultRetryableErrors {
 		if strings.HasSuffix(s, retryableError.Error()) {
 			return true
 		}
@@ -24,7 +32,7 @@ func retryable(err error) bool {
 	return false
 }
 
-var retryableErrors = []error{
+var defaultRetryableErrors = []error{
 	syscall.ECONNREFUSED,
 	syscall.ECONNRESET,
 	syscall.ETIMEDOUT,

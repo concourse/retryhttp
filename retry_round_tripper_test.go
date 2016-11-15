@@ -38,6 +38,7 @@ var _ = Describe("RetryRoundTripper", func() {
 			Logger:         testLogger,
 			BackOffFactory: fakeBackOffFactory,
 			RoundTripper:   fakeRoundTripper,
+			Retryer:        &retryhttp.DefaultRetryer{},
 		}
 		request = &http.Request{URL: &url.URL{Path: "some-path"}}
 	})

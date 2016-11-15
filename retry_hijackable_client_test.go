@@ -38,6 +38,7 @@ var _ = Describe("RetryHijackableClient", func() {
 			Logger:           testLogger,
 			BackOffFactory:   fakeBackOffFactory,
 			HijackableClient: fakeHijackableClient,
+			Retryer:          &retryhttp.DefaultRetryer{},
 		}
 		request = &http.Request{URL: &url.URL{Path: "some-path"}}
 	})

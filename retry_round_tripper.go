@@ -26,6 +26,7 @@ type RetryRoundTripper struct {
 	Logger         lager.Logger
 	BackOffFactory BackOffFactory
 	RoundTripper   RoundTripper
+	Retryer        Retryer
 }
 
 type RetryReadCloser struct {
@@ -53,7 +54,7 @@ func (d *RetryRoundTripper) RoundTrip(request *http.Request) (*http.Response, er
 
 	backoff.Retry(func() error {
 		response, err = d.RoundTripper.RoundTrip(request)
-		if err != nil && !retryReadCloser.IsRead && retryable(err) {
+		if err != nil && !retryReadCloser.IsRead && d.Retryer.IsRetryable(err) {
 			failedAttempts++
 			d.Logger.Info("retrying", lager.Data{
 				"failed-attempts": failedAttempts,

@@ -12,6 +12,7 @@ type RetryHijackableClient struct {
 	Logger           lager.Logger
 	BackOffFactory   BackOffFactory
 	HijackableClient HijackableClient
+	Retryer          Retryer
 }
 
 func (d *RetryHijackableClient) Do(request *http.Request) (*http.Response, HijackCloser, error) {
@@ -24,7 +25,7 @@ func (d *RetryHijackableClient) Do(request *http.Request) (*http.Response, Hijac
 
 	backoff.Retry(func() error {
 		response, hijackCloser, err = d.HijackableClient.Do(request)
-		if err != nil && retryable(err) {
+		if err != nil && d.Retryer.IsRetryable(err) {
 			failedAttempts++
 			d.Logger.Info("retrying", lager.Data{
 				"failed-attempts": failedAttempts,
