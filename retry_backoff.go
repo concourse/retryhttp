@@ -3,7 +3,7 @@ package retryhttp
 import (
 	"time"
 
-	"github.com/cenk/backoff"
+	"github.com/cenkalti/backoff"
 )
 
 //go:generate counterfeiter . BackOff
