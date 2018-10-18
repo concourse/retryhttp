@@ -38,5 +38,8 @@ var defaultRetryableErrors = []error{
 	syscall.ETIMEDOUT,
 	errors.New("i/o timeout"),
 	errors.New("no such host"),
-	errors.New("remote error: handshake failure"),
+	errors.New("handshake failure"),
+	errors.New("handshake timeout"),
+	errors.New("connection reset by peer"),
+	errors.New("timeout awaiting response headers"),
 }
