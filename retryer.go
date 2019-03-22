@@ -41,4 +41,5 @@ var defaultRetryableErrors = []error{
 	errors.New("handshake failure"),
 	errors.New("handshake timeout"),
 	errors.New("timeout awaiting response headers"),
+	errors.New("unexpected EOF"),
 }
