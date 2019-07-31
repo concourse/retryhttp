@@ -24,7 +24,9 @@ func (r *DefaultRetryer) IsRetryable(err error) bool {
 
 	s := err.Error()
 	for _, retryableError := range defaultRetryableErrors {
-		if strings.HasSuffix(s, retryableError.Error()) {
+		if strings.HasSuffix(
+			strings.ToLower(s),
+			strings.ToLower(retryableError.Error())) {
 			return true
 		}
 	}
