@@ -45,4 +45,6 @@ var defaultRetryableErrors = []error{
 	errors.New("timeout awaiting response headers"),
 	errors.New("unexpected EOF"),
 	errors.New("unexpected EOF reading trailer"),
+	errors.New("read on closed response body"),
+	errors.New("connection reset by peer"),
 }
