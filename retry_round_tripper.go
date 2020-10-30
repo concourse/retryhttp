@@ -5,7 +5,7 @@ import (
 	"net/http"
 	"time"
 
-	"github.com/cenkalti/backoff"
+	"github.com/cenkalti/backoff/v4"
 
 	"code.cloudfoundry.org/lager"
 )
@@ -55,6 +55,10 @@ func (d *RetryRoundTripper) RoundTrip(request *http.Request) (*http.Response, er
 	backoff.Retry(func() error {
 		response, err = d.RoundTripper.RoundTrip(request)
 		if err != nil && !retryReadCloser.IsRead && d.Retryer.IsRetryable(err) {
+			if request.Context().Err() != nil {
+				return backoff.Permanent(err)
+			}
+
 			failedAttempts++
 			d.Logger.Info("retrying", lager.Data{
 				"failed-attempts": failedAttempts,

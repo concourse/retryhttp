@@ -1,6 +1,7 @@
 package retryhttp_test
 
 import (
+	"context"
 	"errors"
 	"net/http"
 	"net/url"
@@ -8,7 +9,7 @@ import (
 	"time"
 
 	"code.cloudfoundry.org/lager"
-	"github.com/cenkalti/backoff"
+	"github.com/cenkalti/backoff/v4"
 	"github.com/concourse/retryhttp"
 	"github.com/concourse/retryhttp/retryhttpfakes"
 	. "github.com/onsi/ginkgo"
@@ -137,6 +138,42 @@ var _ = Describe("RetryRoundTripper", func() {
 
 		It("does not error", func() {
 			Expect(roundTripErr).NotTo(HaveOccurred())
+		})
+	})
+
+	Context("when the context is canceled", func() {
+		var innerErr = errors.New("oh no")
+
+		BeforeEach(func() {
+			ctx, cancel := context.WithCancel(context.Background())
+			cancel()
+
+			fakeRoundTripper.RoundTripReturns(nil, innerErr)
+
+			request = request.WithContext(ctx)
+		})
+
+		It("does not retry and returns the error", func() {
+			Expect(fakeRoundTripper.RoundTripCallCount()).To(Equal(1))
+			Expect(roundTripErr).To(Equal(innerErr))
+		})
+	})
+
+	Context("when the context times out", func() {
+		var innerErr = errors.New("oh no")
+
+		BeforeEach(func() {
+			ctx, cancel := context.WithTimeout(context.Background(), 0)
+			cancel()
+
+			fakeRoundTripper.RoundTripReturns(nil, innerErr)
+
+			request = request.WithContext(ctx)
+		})
+
+		It("does not retry and returns the error", func() {
+			Expect(fakeRoundTripper.RoundTripCallCount()).To(Equal(1))
+			Expect(roundTripErr).To(Equal(innerErr))
 		})
 	})
 })

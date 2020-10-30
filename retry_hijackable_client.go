@@ -3,7 +3,7 @@ package retryhttp
 import (
 	"net/http"
 
-	"github.com/cenkalti/backoff"
+	"github.com/cenkalti/backoff/v4"
 
 	"code.cloudfoundry.org/lager"
 )
