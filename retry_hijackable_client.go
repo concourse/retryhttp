@@ -5,7 +5,7 @@ import (
 
 	"github.com/cenkalti/backoff/v4"
 
-	"code.cloudfoundry.org/lager"
+	"code.cloudfoundry.org/lager/v3"
 )
 
 type RetryHijackableClient struct {

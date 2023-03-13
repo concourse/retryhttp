@@ -6,10 +6,10 @@ import (
 	"syscall"
 	"time"
 
-	"code.cloudfoundry.org/lager"
+	"code.cloudfoundry.org/lager/v3"
 	"github.com/concourse/retryhttp"
 	"github.com/concourse/retryhttp/retryhttpfakes"
-	. "github.com/onsi/ginkgo"
+	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
 )
 
@@ -41,14 +41,12 @@ var _ = Describe("RetryBackoffFactory", func() {
 			}
 		})
 
-		It("it respects the timeout", func(done Done) {
+		It("it respects the timeout", func() {
 			_, roundTripErr = retryRoundTripper.RoundTrip(request)
 			Expect(roundTripErr).To(Equal(retryableError))
 			Expect(fakeRoundTripper.RoundTripCallCount()).To(Equal(2))
-
-			close(done)
 			// retries twice, after 1 and 2 seconds -> total time of 3 seconds, add
 			// extra second to timeout just to be safe
-		}, 4)
+		})
 	})
 })

@@ -8,11 +8,11 @@ import (
 	"syscall"
 	"time"
 
-	"code.cloudfoundry.org/lager"
+	"code.cloudfoundry.org/lager/v3"
 	"github.com/cenkalti/backoff/v4"
 	"github.com/concourse/retryhttp"
 	"github.com/concourse/retryhttp/retryhttpfakes"
-	. "github.com/onsi/ginkgo"
+	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
 	"github.com/onsi/gomega/gbytes"
 )
