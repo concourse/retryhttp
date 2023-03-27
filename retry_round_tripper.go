@@ -7,7 +7,7 @@ import (
 
 	"github.com/cenkalti/backoff/v4"
 
-	"code.cloudfoundry.org/lager/v3"
+	"code.cloudfoundry.org/lager"
 )
 
 //go:generate counterfeiter . Sleeper
