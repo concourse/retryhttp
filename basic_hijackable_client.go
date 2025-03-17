@@ -2,9 +2,9 @@ package retryhttp
 
 import (
 	"bufio"
+	"context"
 	"net"
 	"net/http"
-	"net/http/httputil"
 	"net/url"
 	"strings"
 	"time"
@@ -41,8 +41,51 @@ type defaultDoHijackCloserFactory struct{}
 
 var DefaultDoHijackCloserFactory DoHijackCloserFactory = defaultDoHijackCloserFactory{}
 
+type CustomClientConn struct {
+	conn   net.Conn
+	reader *bufio.Reader
+	client *http.Client
+}
+
+// Do performs the HTTP request and returns the response
+func (c *CustomClientConn) Do(req *http.Request) (*http.Response, error) {
+	// Create a simple transport that uses our connection
+	transport := &http.Transport{
+		DialContext: func(ctx context.Context, network, addr string) (net.Conn, error) {
+			return c.conn, nil
+		},
+		DisableKeepAlives: true,
+	}
+
+	c.client = &http.Client{
+		Transport: transport,
+	}
+
+	// Clone the request to avoid modifying the original
+	reqCopy := req.Clone(req.Context())
+
+	return c.client.Do(reqCopy)
+}
+
+// Hijack returns the underlying connection and reader
+func (c *CustomClientConn) Hijack() (net.Conn, *bufio.Reader) {
+	return c.conn, c.reader
+}
+
+// Close closes the connection
+func (c *CustomClientConn) Close() error {
+	return c.conn.Close()
+}
+
+// NewDoHijackCloser creates a new DoHijackCloser that wraps the given connection and reader
 func (f defaultDoHijackCloserFactory) NewDoHijackCloser(c net.Conn, r *bufio.Reader) DoHijackCloser {
-	return httputil.NewClientConn(c, r)
+	if r == nil {
+		r = bufio.NewReader(c)
+	}
+	return &CustomClientConn{
+		conn:   c,
+		reader: r,
+	}
 }
 
 //go:generate counterfeiter . HijackCloser
@@ -96,11 +139,17 @@ var portMap = map[string]string{
 func canonicalAddr(url *url.URL) string {
 	addr := url.Host
 	if !hasPort(addr) {
-		return addr + ":" + portMap[url.Scheme]
+		port, ok := portMap[url.Scheme]
+		if !ok {
+			port = "80" // Default to HTTP port if scheme not recognized
+		}
+		return addr + ":" + port
 	}
 	return addr
 }
 
 // Given a string of the form "host", "host:port", or "[ipv6::address]:port",
 // return true if the string includes a port.
-func hasPort(s string) bool { return strings.LastIndex(s, ":") > strings.LastIndex(s, "]") }
+func hasPort(s string) bool {
+	return strings.LastIndex(s, ":") > strings.LastIndex(s, "]")
+}
