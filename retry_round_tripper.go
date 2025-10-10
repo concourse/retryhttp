@@ -54,7 +54,11 @@ func (d *RetryRoundTripper) RoundTrip(request *http.Request) (*http.Response, er
 
 	backoff.Retry(func() error {
 		response, err = d.RoundTripper.RoundTrip(request)
-		if err != nil && !retryReadCloser.IsRead && d.Retryer.IsRetryable(err) {
+		retryer := d.Retryer
+		if retryer == nil {
+			retryer = &DefaultRetryer{}
+		}
+		if err != nil && !retryReadCloser.IsRead && retryer.IsRetryable(err) {
 			if request.Context().Err() != nil {
 				return backoff.Permanent(err)
 			}

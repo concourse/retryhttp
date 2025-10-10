@@ -133,4 +133,24 @@ var _ = Describe("RetryHijackableClient", func() {
 			Expect(clientError).NotTo(HaveOccurred())
 		})
 	})
+
+	Context("when a retryer is not provided", func() {
+		BeforeEach(func() {
+			retryHijackableClient.Retryer = nil
+			fakeHijackableClient.DoReturns(nil, nil, syscall.ECONNRESET)
+			backOffAttempts := 0
+			fakeBackOff.NextBackOffStub = func() time.Duration {
+				backOffAttempts++
+				if backOffAttempts >= 2 {
+					return backoff.Stop
+				}
+				return 0 * time.Second
+			}
+		})
+
+		It("uses the default retryer", func() {
+			Expect(fakeHijackableClient.DoCallCount()).To(Equal(2))
+			Expect(clientError).To(Equal(syscall.ECONNRESET))
+		})
+	})
 })
