@@ -8,7 +8,7 @@ import (
 	"time"
 
 	"code.cloudfoundry.org/lager/v3"
-	"github.com/cenkalti/backoff/v4"
+	"github.com/cenkalti/backoff/v5"
 	"github.com/concourse/retryhttp"
 	"github.com/concourse/retryhttp/retryhttpfakes"
 	. "github.com/onsi/ginkgo/v2"
@@ -32,6 +32,7 @@ var _ = Describe("RetryHijackableClient", func() {
 		fakeBackOffFactory := new(retryhttpfakes.FakeBackOffFactory)
 		fakeBackOff = new(retryhttpfakes.FakeBackOff)
 		fakeBackOffFactory.NewBackOffReturns(fakeBackOff)
+		fakeBackOffFactory.WithMaxElapsedTimeReturns(backoff.WithMaxElapsedTime(time.Second))
 		testLogger = lager.NewLogger("test")
 
 		retryHijackableClient = &retryhttp.RetryHijackableClient{

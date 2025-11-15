@@ -3,27 +3,24 @@ package retryhttp
 import (
 	"errors"
 	"net"
+	"slices"
 	"strings"
 	"syscall"
 )
 
-//go:generate counterfeiter . Retryer
+//counterfeiter:generate . Retryer
 
-// Retryer defines an interface for determining if an error is retryable
 type Retryer interface {
 	IsRetryable(err error) bool
 }
 
-// DefaultRetryer implements the Retryer interface with common retry logic
 type DefaultRetryer struct{}
 
-// IsRetryable determines if the given error should trigger a retry
 func (r *DefaultRetryer) IsRetryable(err error) bool {
 	if err == nil {
 		return false
 	}
 
-	// Check for net.Error interface implementation and Temporary() or Timeout() status
 	if netErr, ok := err.(net.Error); ok {
 		if netErr.Temporary() || netErr.Timeout() {
 			return true
@@ -33,10 +30,8 @@ func (r *DefaultRetryer) IsRetryable(err error) bool {
 	// Check if the error is in our predefined list of retryable errors
 	var sysErr syscall.Errno
 	if errors.As(err, &sysErr) {
-		for _, code := range retryableSyscallErrors {
-			if sysErr == code {
-				return true
-			}
+		if slices.Contains(retryableSyscallErrors, sysErr) {
+			return true
 		}
 	}
 

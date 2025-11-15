@@ -3,21 +3,21 @@ package retryhttp
 import (
 	"time"
 
-	"github.com/cenkalti/backoff/v4"
+	"github.com/cenkalti/backoff/v5"
 )
 
-//go:generate counterfeiter . BackOff
+//counterfeiter:generate . BackOff
 
 type BackOff interface {
 	NextBackOff() time.Duration
-	GetElapsedTime() time.Duration
 	Reset()
 }
 
-//go:generate counterfeiter . BackOffFactory
+//counterfeiter:generate . BackOffFactory
 
 type BackOffFactory interface {
 	NewBackOff() BackOff
+	WithMaxElapsedTime() backoff.RetryOption
 }
 
 type exponentialBackOffFactory struct {
@@ -33,10 +33,11 @@ func NewExponentialBackOffFactory(timeout time.Duration) BackOffFactory {
 func (f *exponentialBackOffFactory) NewBackOff() BackOff {
 	b := backoff.NewExponentialBackOff()
 	b.InitialInterval = 1 * time.Second
-	b.RandomizationFactor = 0.3
-	b.Multiplier = 2
 	b.MaxInterval = 16 * time.Second
-	b.MaxElapsedTime = f.timeout
 
 	return b
+}
+
+func (f *exponentialBackOffFactory) WithMaxElapsedTime() backoff.RetryOption {
+	return backoff.WithMaxElapsedTime(f.timeout)
 }

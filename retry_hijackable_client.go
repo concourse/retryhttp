@@ -1,9 +1,11 @@
 package retryhttp
 
 import (
+	"context"
 	"net/http"
+	"time"
 
-	"github.com/cenkalti/backoff/v4"
+	"github.com/cenkalti/backoff/v5"
 
 	"code.cloudfoundry.org/lager/v3"
 )
@@ -22,8 +24,9 @@ func (d *RetryHijackableClient) Do(request *http.Request) (*http.Response, Hijac
 	var failedAttempts uint
 
 	backOff := d.BackOffFactory.NewBackOff()
+	start := time.Now()
 
-	backoff.Retry(func() error {
+	backoff.Retry(context.TODO(), func() (bool, error) {
 		response, hijackCloser, err = d.HijackableClient.Do(request)
 		retryer := d.Retryer
 		if retryer == nil {
@@ -33,14 +36,14 @@ func (d *RetryHijackableClient) Do(request *http.Request) (*http.Response, Hijac
 			failedAttempts++
 			d.Logger.Info("retrying", lager.Data{
 				"failed-attempts": failedAttempts,
-				"ran-for":         backOff.GetElapsedTime().String(),
+				"ran-for":         time.Since(start).String(),
 				"error":           err.Error(),
 			})
-			return err
+			return false, err
 		}
 
-		return nil
-	}, backOff)
+		return true, nil
+	}, backoff.WithBackOff(backOff), d.BackOffFactory.WithMaxElapsedTime())
 
 	return response, hijackCloser, err
 }
