@@ -33,11 +33,10 @@ func NewExponentialBackOffFactory(timeout time.Duration) BackOffFactory {
 func (f *exponentialBackOffFactory) NewBackOff() BackOff {
 	b := backoff.NewExponentialBackOff()
 	b.InitialInterval = 1 * time.Second
-	b.RandomizationFactor = 0
+	b.RandomizationFactor = 0.3
 	b.Multiplier = 2
 	b.MaxInterval = 16 * time.Second
 	b.MaxElapsedTime = f.timeout
-	b.Clock = backoff.SystemClock
 
 	return b
 }
