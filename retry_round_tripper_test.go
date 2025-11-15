@@ -176,4 +176,24 @@ var _ = Describe("RetryRoundTripper", func() {
 			Expect(roundTripErr).To(Equal(innerErr))
 		})
 	})
+
+	Context("when a retryer is not provided", func() {
+		BeforeEach(func() {
+			retryRoundTripper.Retryer = nil
+			fakeRoundTripper.RoundTripReturns(nil, syscall.ECONNRESET)
+			backOffAttempts := 0
+			fakeBackOff.NextBackOffStub = func() time.Duration {
+				backOffAttempts++
+				if backOffAttempts >= 2 {
+					return backoff.Stop
+				}
+				return 0 * time.Second
+			}
+		})
+
+		It("uses the default retryer", func() {
+			Expect(fakeRoundTripper.RoundTripCallCount()).To(Equal(2))
+			Expect(roundTripErr).To(Equal(syscall.ECONNRESET))
+		})
+	})
 })

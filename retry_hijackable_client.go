@@ -25,7 +25,11 @@ func (d *RetryHijackableClient) Do(request *http.Request) (*http.Response, Hijac
 
 	backoff.Retry(func() error {
 		response, hijackCloser, err = d.HijackableClient.Do(request)
-		if err != nil && d.Retryer.IsRetryable(err) {
+		retryer := d.Retryer
+		if retryer == nil {
+			retryer = &DefaultRetryer{}
+		}
+		if err != nil && retryer.IsRetryable(err) {
 			failedAttempts++
 			d.Logger.Info("retrying", lager.Data{
 				"failed-attempts": failedAttempts,
