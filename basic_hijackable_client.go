@@ -10,7 +10,9 @@ import (
 	"time"
 )
 
-//go:generate counterfeiter . Conn
+//go:generate go tool counterfeiter -generate
+
+//counterfeiter:generate . Conn
 
 type Conn interface {
 	Read(b []byte) (n int, err error)
@@ -23,7 +25,7 @@ type Conn interface {
 	SetWriteDeadline(t time.Time) error
 }
 
-//go:generate counterfeiter . DoHijackCloser
+//counterfeiter:generate . DoHijackCloser
 
 type DoHijackCloser interface {
 	Do(req *http.Request) (resp *http.Response, err error)
@@ -31,7 +33,7 @@ type DoHijackCloser interface {
 	Close() error
 }
 
-//go:generate counterfeiter . DoHijackCloserFactory
+//counterfeiter:generate . DoHijackCloserFactory
 
 type DoHijackCloserFactory interface {
 	NewDoHijackCloser(c net.Conn, r *bufio.Reader) DoHijackCloser
@@ -45,14 +47,14 @@ func (f defaultDoHijackCloserFactory) NewDoHijackCloser(c net.Conn, r *bufio.Rea
 	return httputil.NewClientConn(c, r)
 }
 
-//go:generate counterfeiter . HijackCloser
+//counterfeiter:generate . HijackCloser
 
 type HijackCloser interface {
 	Hijack() (c net.Conn, r *bufio.Reader)
 	Close() error
 }
 
-//go:generate counterfeiter . HijackableClient
+//counterfeiter:generate . HijackableClient
 
 type HijackableClient interface {
 	Do(req *http.Request) (*http.Response, HijackCloser, error)

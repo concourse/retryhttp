@@ -1,22 +1,23 @@
 package retryhttp
 
 import (
+	"context"
 	"io"
 	"net/http"
 	"time"
 
-	"github.com/cenkalti/backoff/v4"
+	"github.com/cenkalti/backoff/v5"
 
 	"code.cloudfoundry.org/lager/v3"
 )
 
-//go:generate counterfeiter . Sleeper
+//counterfeiter:generate . Sleeper
 
 type Sleeper interface {
 	Sleep(time.Duration)
 }
 
-//go:generate counterfeiter . RoundTripper
+//counterfeiter:generate . RoundTripper
 
 type RoundTripper interface {
 	RoundTrip(request *http.Request) (*http.Response, error)
@@ -51,8 +52,9 @@ func (d *RetryRoundTripper) RoundTrip(request *http.Request) (*http.Response, er
 	var failedAttempts uint
 
 	backOff := d.BackOffFactory.NewBackOff()
+	start := time.Now()
 
-	backoff.Retry(func() error {
+	backoff.Retry(context.TODO(), func() (bool, error) {
 		response, err = d.RoundTripper.RoundTrip(request)
 		retryer := d.Retryer
 		if retryer == nil {
@@ -60,20 +62,20 @@ func (d *RetryRoundTripper) RoundTrip(request *http.Request) (*http.Response, er
 		}
 		if err != nil && !retryReadCloser.IsRead && retryer.IsRetryable(err) {
 			if request.Context().Err() != nil {
-				return backoff.Permanent(err)
+				return false, backoff.Permanent(err)
 			}
 
 			failedAttempts++
 			d.Logger.Info("retrying", lager.Data{
 				"failed-attempts": failedAttempts,
-				"ran-for":         backOff.GetElapsedTime().String(),
+				"ran-for":         time.Since(start).String(),
 				"error":           err.Error(),
 			})
-			return err
+			return false, err
 		}
 
-		return nil
-	}, backOff)
+		return true, nil
+	}, backoff.WithBackOff(backOff), d.BackOffFactory.WithMaxElapsedTime())
 
 	return response, err
 }

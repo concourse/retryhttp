@@ -44,9 +44,9 @@ var _ = Describe("RetryBackoffFactory", func() {
 		It("it respects the timeout", func() {
 			_, roundTripErr = retryRoundTripper.RoundTrip(request)
 			Expect(roundTripErr).To(Equal(retryableError))
-			Expect(fakeRoundTripper.RoundTripCallCount()).To(Equal(2))
-			// retries twice, after 1 and 2 seconds -> total time of 3 seconds, add
-			// extra second to timeout just to be safe
+			// Roundtrip can be called called 2 or 3 times. Non-deterministic
+			// because of the random factor applied to the backoff.
+			Expect(fakeRoundTripper.RoundTripCallCount()).To(Or(Equal(2), Equal(3)))
 		})
 	})
 })
